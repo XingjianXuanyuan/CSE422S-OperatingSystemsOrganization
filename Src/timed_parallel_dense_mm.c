@@ -57,48 +57,47 @@ int main( int argc, char* argv[] )
 
     if ( argc < num_expected_args || argc > num_expected_args + 1 ) {
         printf("Usage: ./dense_mm <size of matrices> <number of iterations>\n");
-		exit(-1);
+	exit(-1);
     }
 
     matrix_size = atoi(argv[1]);
     if ( argc == 3 ) iterations = atoi(argv[2]);
 
     if ( matrix_size > sqrt_of_UINT32_MAX ) {
-        printf("ERROR: Matrix size must be between zero and 65536!\n");
-		exit(-1);
+	printf("ERROR: Matrix size must be between zero and 65536!\n");
+	exit(-1);
     }
 
     squared_size = matrix_size * matrix_size;
+    printf("Generating matrices...\n");
 
-	printf("Generating matrices...\n");
-
-	A = (double*) malloc( sizeof(double) * squared_size );
-	B = (double*) malloc( sizeof(double) * squared_size );
-	C = (double*) malloc( sizeof(double) * squared_size );
-	#ifdef VERIFY_PARALLEL
-	D = (double*) malloc( sizeof(double) * squared_size );
-	#endif
+    A = (double*) malloc( sizeof(double) * squared_size );
+    B = (double*) malloc( sizeof(double) * squared_size );
+    C = (double*) malloc( sizeof(double) * squared_size );
+    #ifdef VERIFY_PARALLEL
+    D = (double*) malloc( sizeof(double) * squared_size );
+    #endif
 
     for( index = 0; index < squared_size; index++ ) {
-		A[index] = (double) rand();
-		B[index] = (double) rand();
-		C[index] = 0.0;
-		#ifdef VERIFY_PARALLEL
-		D[index] = 0.0;
-		#endif
-	}
+        A[index] = (double) rand();
+	B[index] = (double) rand();
+	C[index] = 0.0;
+	#ifdef VERIFY_PARALLEL
+	D[index] = 0.0;
+	#endif
+    }
 
-	printf("Multiplying matrices...\n");
+    printf("Multiplying matrices...\n");
     for ( i = 0; i < iterations; i++ ) {
         clock_gettime( CLOCK_MONOTONIC_RAW, &start );
         #pragma omp parallel for private(col, row, index) // Critical section
-	    for( col = 0; col < matrix_size; col++ ) {
-		    for( row = 0; row < matrix_size; row++ ) {
-			    for( index = 0; index < matrix_size; index++) {
-			        C[row*matrix_size + col] += A[row*matrix_size + index] *B[index*matrix_size + col];
-			    }	
-		    }
-	    }
+	for( col = 0; col < matrix_size; col++ ) {
+            for( row = 0; row < matrix_size; row++ ) {
+	        for( index = 0; index < matrix_size; index++) {
+		    C[row*matrix_size + col] += A[row*matrix_size + index] *B[index*matrix_size + col];
+                }	
+            }
+	}
         clock_gettime( CLOCK_MONOTONIC_RAW, &end );
         interval = (end.tv_sec * BILLION - start.tv_sec * BILLION) + (end.tv_nsec - start.tv_nsec);
         sum += interval;
@@ -112,20 +111,20 @@ int main( int argc, char* argv[] )
     printf("%25s\t%15s\t%15s\n", "Average", commaprint(average/BILLION), commaprint(average%BILLION));
 
     #ifdef VERIFY_PARALLEL
-	printf("Verifying parallel matrix multiplication...\n");
-	for( col = 0; col < matrix_size; col++ ) {
-		for( row = 0; row < matrix_size; row++ ) {
-			for( index = 0; index < matrix_size; index++) {
-			D[row*matrix_size + col] += A[row*matrix_size + index] *B[index*matrix_size + col];
-			}	
-		}
+    printf("Verifying parallel matrix multiplication...\n");
+    for( col = 0; col < matrix_size; col++ ) {
+        for( row = 0; row < matrix_size; row++ ) {
+            for( index = 0; index < matrix_size; index++) {
+	        D[row*matrix_size + col] += A[row*matrix_size + index] *B[index*matrix_size + col];
+	    }	
 	}
+    }
 
-	for( index = 0; index < squared_size; index++ ) 
-		assert( C[index] == D[index] );
-	#endif //ifdef VERIFY_PARALLEL
+    for( index = 0; index < squared_size; index++ ) 
+        assert( C[index] == D[index] );
+    #endif //ifdef VERIFY_PARALLEL
 
-	printf("Multiplication done!\n");
+    printf("Multiplication done!\n");
 
-	return 0;
+    return 0;
 }
